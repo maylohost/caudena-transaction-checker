@@ -104,7 +104,7 @@ python check_transaction.py --address <address> --currency <currency>
 
 ```bash
 # Bitcoin
-python check_transaction.py --address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa --currency btc
+python check_transaction.py --address xxxx --currency btc
 
 # Ethereum
 python check_transaction.py --address 0x0000000000000000000000000000000000000000 --currency eth
@@ -332,7 +332,7 @@ python check_transaction.py --address <address> --currency <currency>
 
 ```bash
 # Bitcoin
-python check_transaction.py --address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa --currency btc
+python check_transaction.py --address xxxx --currency btc
 
 # Ethereum
 python check_transaction.py --address 0x0000000000000000000000000000000000000000 --currency eth
