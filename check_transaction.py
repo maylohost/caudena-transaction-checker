@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script CLI per verificare transazioni blockchain usando l'API Caudena
-Uso:
+CLI script to verify blockchain transactions using the Caudena API
+Usage:
     python check_transaction.py --hash <hash> --currency btc
     python check_transaction.py --address <address> --currency btc
 """
@@ -15,43 +15,43 @@ import jwt
 import requests
 from typing import Optional, Dict, Any
 
-# Base URL dell'API
+# API base URL
 API_BASE_URL = "https://prism-api.caudena.com"
 
 def load_env_file(filepath: str) -> Dict[str, str]:
-    """Carica variabili da un file .env"""
+    """Load variables from a .env file"""
     env_vars = {}
     if os.path.exists(filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
-                    # Ignora commenti e righe vuote
+                    # Ignore comments and empty lines
                     if not line or line.startswith('#'):
                         continue
                     
-                    # Supporta diversi formati: KEY=value, KEY:value, KEY = value, export KEY=value
+                    # Support different formats: KEY=value, KEY:value, KEY = value, export KEY=value
                     separator = '=' if '=' in line else ':' if ':' in line else None
                     if separator:
-                        # Rimuovi 'export' se presente
+                        # Remove 'export' if present
                         line = line.replace('export ', '').strip()
                         parts = line.split(separator, 1)
                         if len(parts) == 2:
                             key = parts[0].strip()
                             value = parts[1].strip()
-                            # Rimuovi quote se presenti
+                            # Remove quotes if present
                             if value.startswith('"') and value.endswith('"'):
                                 value = value[1:-1]
                             elif value.startswith("'") and value.endswith("'"):
                                 value = value[1:-1]
                             env_vars[key] = value
         except Exception as e:
-            print(f"⚠️  Avviso: Errore nel leggere {filepath} (riga {line_num}): {e}")
+            print(f"⚠️  Warning: Error reading {filepath} (line {line_num}): {e}")
     return env_vars
 
 def get_api_credentials() -> tuple[str, str]:
-    """Recupera le credenziali API da .env o variabili d'ambiente"""
-    # Cerca file .env nella directory corrente
+    """Retrieve API credentials from .env file or environment variables"""
+    # Search for .env file in current directory
     env_files = ['.env', '.env.local', os.path.join(os.path.dirname(__file__), '.env')]
     env_vars = {}
     
@@ -61,7 +61,7 @@ def get_api_credentials() -> tuple[str, str]:
             if env_vars:
                 break
     
-    # Prova diverse varianti di nomi delle chiavi
+    # Try different key name variants
     kid = (os.getenv("CAUDENA_KID") or 
            env_vars.get("CAUDENA_KID") or 
            env_vars.get("id_caudena") or
@@ -77,44 +77,44 @@ def get_api_credentials() -> tuple[str, str]:
               env_vars.get("CAUDENA_API_SECRET"))
     
     if not kid:
-        print("❌ Errore: CAUDENA_KID non trovato")
-        print("   Configura le credenziali in:")
-        print("   - Variabili d'ambiente: CAUDENA_KID e CAUDENA_SECRET")
-        print("   - File .env nella directory corrente")
-        print("   - File .env.local nella directory corrente")
+        print("❌ Error: CAUDENA_KID not found")
+        print("   Configure credentials in:")
+        print("   - Environment variables: CAUDENA_KID and CAUDENA_SECRET")
+        print("   - .env file in current directory")
+        print("   - .env.local file in current directory")
         sys.exit(1)
     
     if not secret:
-        print("❌ Errore: CAUDENA_SECRET non trovato")
-        print("   Configura le credenziali in:")
-        print("   - Variabili d'ambiente: CAUDENA_KID e CAUDENA_SECRET")
-        print("   - File .env nella directory corrente")
-        print("   - File .env.local nella directory corrente")
+        print("❌ Error: CAUDENA_SECRET not found")
+        print("   Configure credentials in:")
+        print("   - Environment variables: CAUDENA_KID and CAUDENA_SECRET")
+        print("   - .env file in current directory")
+        print("   - .env.local file in current directory")
         sys.exit(1)
     
     return kid, secret
 
 def generate_jwt_token(kid: str, secret_b64: str) -> str:
-    """Genera un token JWT per l'autenticazione"""
+    """Generate a JWT token for authentication"""
     try:
-        # Decodifica il secret da base64
+        # Decode secret from base64
         secret = base64.b64decode(secret_b64)
     except Exception as e:
-        print(f"❌ Errore nel decodificare il secret: {e}")
+        print(f"❌ Error decoding secret: {e}")
         sys.exit(1)
     
-    # Crea il payload con exp di 5 minuti
+    # Create payload with 5 minute expiration
     payload = {
         "kid": kid,
         "exp": int((datetime.now() + timedelta(minutes=5)).timestamp())
     }
     
-    # Genera il token
+    # Generate token
     token = jwt.encode(payload, secret, algorithm="HS256")
     return token
 
 def make_api_request(method: str, endpoint: str, token: str, data: Optional[Dict] = None) -> Dict[str, Any]:
-    """Esegue una richiesta API"""
+    """Execute an API request"""
     url = f"{API_BASE_URL}{endpoint}"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -130,31 +130,31 @@ def make_api_request(method: str, endpoint: str, token: str, data: Optional[Dict
         elif method.upper() == "POST":
             response = requests.post(url, headers=headers, json=data, timeout=30)
         else:
-            raise ValueError(f"Metodo non supportato: {method}")
+            raise ValueError(f"Unsupported method: {method}")
         
-        # Mostra dettagli dell'errore se presente
+        # Show error details if present
         if response.status_code != 200:
             try:
                 error_data = response.json()
-                print(f"❌ Errore HTTP {response.status_code}: {error_data}")
+                print(f"❌ HTTP Error {response.status_code}: {error_data}")
             except:
-                print(f"❌ Errore HTTP {response.status_code}: {response.text}")
+                print(f"❌ HTTP Error {response.status_code}: {response.text}")
             sys.exit(1)
         
         return response.json()
     
     except requests.exceptions.HTTPError as e:
-        print(f"❌ Errore HTTP: {e}")
+        print(f"❌ HTTP Error: {e}")
         if hasattr(e.response, 'text'):
-            print(f"   Dettagli: {e.response.text}")
+            print(f"   Details: {e.response.text}")
         sys.exit(1)
     except requests.exceptions.RequestException as e:
-        print(f"❌ Errore nella richiesta: {e}")
+        print(f"❌ Request error: {e}")
         sys.exit(1)
 
 def check_transaction_by_hash(currency: str, tx_hash: str, token: str):
-    """Verifica una transazione tramite hash"""
-    print(f"\n🔍 Verifica transazione: {tx_hash}")
+    """Verify a transaction by hash"""
+    print(f"\n🔍 Verifying transaction: {tx_hash}")
     print(f"   Currency: {currency.upper()}\n")
     
     endpoint = f"/v2/{currency}/transaction/{tx_hash}"
@@ -166,31 +166,31 @@ def check_transaction_by_hash(currency: str, tx_hash: str, token: str):
             if data:
                 print_transaction_details(data)
             else:
-                print("❌ Nessun dato nella risposta")
-                print(f"   Risposta completa: {result}")
+                print("❌ No data in response")
+                print(f"   Full response: {result}")
         else:
-            print("❌ Transazione non trovata o errore nella risposta")
-            print(f"   Risposta: {result}")
+            print("❌ Transaction not found or error in response")
+            print(f"   Response: {result}")
     except SystemExit:
         pass
     except Exception as e:
-        print(f"❌ Errore imprevisto: {e}")
+        print(f"❌ Unexpected error: {e}")
 
 def check_transaction_by_address(currency: str, address: str, token: str):
-    """Verifica transazioni tramite indirizzo"""
-    print(f"\n🔍 Verifica indirizzo: {address}")
+    """Verify transactions by address"""
+    print(f"\n🔍 Verifying address: {address}")
     print(f"   Currency: {currency.upper()}\n")
     
-    # Prima recupera le statistiche dell'indirizzo
+    # First retrieve address statistics
     endpoint_stats = f"/v2/{currency}/address/stats/{address}"
     stats_result = make_api_request("GET", endpoint_stats, token)
     
     if stats_result.get("status"):
         print_address_stats(stats_result.get("data", {}))
     
-    # Poi recupera le transazioni (prime 5)
+    # Then retrieve transactions (first 5)
     print("\n" + "="*80)
-    print("📋 Ultime transazioni (prime 5):")
+    print("📋 Recent transactions (first 5):")
     print("="*80 + "\n")
     
     endpoint_tx = f"/v2/{currency}/address/transactions/{address}"
@@ -205,29 +205,29 @@ def check_transaction_by_address(currency: str, address: str, token: str):
         transactions = tx_result.get("data", [])[:5]
         pagination = tx_result.get("pagination", {})
         
-        print(f"Totale transazioni: {pagination.get('total_entries', 0)}\n")
+        print(f"Total transactions: {pagination.get('total_entries', 0)}\n")
         
         for i, tx in enumerate(transactions, 1):
-            print(f"--- Transazione {i} ---")
+            print(f"--- Transaction {i} ---")
             print_transaction_summary(tx)
             print()
     else:
-        print("❌ Nessuna transazione trovata")
+        print("❌ No transactions found")
 
 def print_transaction_details(data: Dict):
-    """Stampa i dettagli completi di una transazione"""
+    """Print complete transaction details"""
     print("="*80)
-    print("📄 DETTAGLI TRANSAZIONE")
+    print("📄 TRANSACTION DETAILS")
     print("="*80)
     
     print(f"\n🔹 Hash: {data.get('hash', 'N/A')}")
-    print(f"🔹 Status: {'✅ Confermata' if data.get('status') else '⏳ In attesa'}")
+    print(f"🔹 Status: {'✅ Confirmed' if data.get('status') else '⏳ Pending'}")
     print(f"🔹 Currency: {data.get('currency', 'N/A').upper()}")
     print(f"🔹 Timestamp: {format_timestamp(data.get('time', 0))}")
     print(f"🔹 Block Height: {data.get('height', 'N/A')}")
     print(f"🔹 Confirmations: {data.get('confirmations', 0):,}")
     
-    print(f"\n💰 Importi:")
+    print(f"\n💰 Amounts:")
     print(f"   Amount: {data.get('amount', 'N/A')}")
     print(f"   Amount USD: ${data.get('amount_usd', 0):,.2f}")
     print(f"   Fee: {data.get('fee', 'N/A')}")
@@ -249,7 +249,7 @@ def print_transaction_details(data: Dict):
             entity = inp.get('name', 'Unidentified')
             print(f"   {i}. {addr[:20]}... | {amount:,} | ${amount_usd:,.2f} | Score: {score} | {entity}")
         if len(data['inputs']) > 3:
-            print(f"   ... e altri {len(data['inputs']) - 3} input")
+            print(f"   ... and {len(data['inputs']) - 3} more inputs")
     
     # Outputs
     if 'outputs' in data and data['outputs']:
@@ -262,9 +262,9 @@ def print_transaction_details(data: Dict):
             entity = out.get('name', 'Unidentified')
             print(f"   {i}. {addr[:20]}... | {amount:,} | ${amount_usd:,.2f} | Score: {score} | {entity}")
         if len(data['outputs']) > 3:
-            print(f"   ... e altri {len(data['outputs']) - 3} output")
+            print(f"   ... and {len(data['outputs']) - 3} more outputs")
     
-    # Token transfers (per EVM)
+    # Token transfers (for EVM)
     if 'tokens' in data and data['tokens']:
         print(f"\n🪙 Token Transfers ({len(data['tokens'])}):")
         for token in data['tokens'][:5]:
@@ -295,8 +295,8 @@ def print_transaction_details(data: Dict):
                 receiver_entity = receiver.get('entity', {}).get('name', 'Unidentified') if receiver.get('entity') else 'Unidentified'
                 print(f"      To: {receiver_addr[:20]}... (Score: {receiver_score}, {receiver_entity})")
     
-    # Evidenzia contract malevoli
-    print(f"\n⚠️  ANALISI CONTRACT:")
+    # Highlight malicious contracts
+    print(f"\n⚠️  CONTRACT ANALYSIS:")
     malicious_found = False
     
     if 'inputs' in data and data['inputs']:
@@ -306,7 +306,7 @@ def print_transaction_details(data: Dict):
                 score = inp.get('score', 'N/A')
                 entity = inp.get('name', 'Unidentified')
                 if score and score < 4:
-                    print(f"   ⚠️  CONTRACT SOSPETTO (Input): {addr}")
+                    print(f"   ⚠️  SUSPICIOUS CONTRACT (Input): {addr}")
                     print(f"      Score: {score}/10 | Entity: {entity}")
                     malicious_found = True
     
@@ -317,17 +317,17 @@ def print_transaction_details(data: Dict):
                 score = out.get('score', 'N/A')
                 entity = out.get('name', 'Unidentified')
                 if score and score < 4:
-                    print(f"   ⚠️  CONTRACT SOSPETTO (Output): {addr}")
+                    print(f"   ⚠️  SUSPICIOUS CONTRACT (Output): {addr}")
                     print(f"      Score: {score}/10 | Entity: {entity}")
                     malicious_found = True
     
     if not malicious_found:
-        print("   ✅ Nessun contract sospetto rilevato")
+        print("   ✅ No suspicious contracts detected")
     
     print("\n" + "="*80)
 
 def print_transaction_summary(tx: Dict):
-    """Stampa un riepilogo breve di una transazione"""
+    """Print a brief summary of a transaction"""
     print(f"Hash: {tx.get('hash', 'N/A')[:20]}...")
     print(f"Time: {format_timestamp(tx.get('time', 0))}")
     print(f"Direction: {tx.get('direction', 'N/A')}")
@@ -337,9 +337,9 @@ def print_transaction_summary(tx: Dict):
     print(f"Confirmations: {tx.get('confirmations', 0):,}")
 
 def print_address_stats(data: Dict):
-    """Stampa le statistiche di un indirizzo"""
+    """Print address statistics"""
     print("="*80)
-    print("📊 STATISTICHE INDIRIZZO")
+    print("📊 ADDRESS STATISTICS")
     print("="*80)
     
     address = data.get('address', 'N/A')
@@ -358,7 +358,7 @@ def print_address_stats(data: Dict):
     print(f"   Total Out: ${balance_usd.get('total_out', 0):,.2f}")
     
     trx_count = data.get('trx_count', {})
-    print(f"\n📊 Transazioni:")
+    print(f"\n📊 Transactions:")
     print(f"   Incoming: {trx_count.get('in', 0):,}")
     print(f"   Outgoing: {trx_count.get('out', 0):,}")
     
@@ -373,7 +373,7 @@ def print_address_stats(data: Dict):
     print(f"🔹 Last Seen: {format_timestamp(data.get('last_seen', 0))}")
 
 def format_timestamp(timestamp: int) -> str:
-    """Formatta un timestamp Unix in formato leggibile"""
+    """Format a Unix timestamp into a readable format"""
     if not timestamp:
         return "N/A"
     try:
@@ -384,30 +384,30 @@ def format_timestamp(timestamp: int) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Verifica transazioni blockchain usando l'API Caudena",
+        description="Verify blockchain transactions using the Caudena API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Esempi:
-  # Verifica transazione per hash
+Examples:
+  # Verify transaction by hash
   python check_transaction.py --hash 0000000000000000000000000000000000000000000000000000000000000000 --currency btc
 
-  # Verifica indirizzo
+  # Verify address
   python check_transaction.py --address xxxxxx --currency btc
 
-Per maggiori informazioni, visita: https://docs.caudena.com
+For more information, visit: https://docs.caudena.com
         """
     )
     
     parser.add_argument(
         "--hash",
         type=str,
-        help="Hash della transazione da verificare"
+        help="Transaction hash to verify"
     )
     
     parser.add_argument(
         "--address",
         type=str,
-        help="Indirizzo blockchain da verificare"
+        help="Blockchain address to verify"
     )
     
     parser.add_argument(
@@ -415,21 +415,21 @@ Per maggiori informazioni, visita: https://docs.caudena.com
         type=str,
         default="btc",
         choices=["btc", "eth", "ltc", "doge", "trx", "bnb"],
-        help="Currency/blockchain (default: btc). Supportate: btc, eth, ltc, doge, trx, bnb"
+        help="Currency/blockchain (default: btc). Supported: btc, eth, ltc, doge, trx, bnb"
     )
     
     args = parser.parse_args()
     
     if not args.hash and not args.address:
-        parser.error("Devi fornire --hash o --address")
+        parser.error("You must provide --hash or --address")
     
     if args.hash and args.address:
-        parser.error("Fornisci solo --hash O --address, non entrambi")
+        parser.error("Provide only --hash OR --address, not both")
     
-    print("🔐 Autenticazione...")
+    print("🔐 Authenticating...")
     kid, secret = get_api_credentials()
     token = generate_jwt_token(kid, secret)
-    print("✅ Token generato con successo\n")
+    print("✅ Token generated successfully\n")
     
     if args.hash:
         check_transaction_by_hash(args.currency, args.hash, token)
