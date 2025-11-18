@@ -392,7 +392,7 @@ Esempi:
   python check_transaction.py --hash 0000000000000000000000000000000000000000000000000000000000000000 --currency btc
 
   # Verifica indirizzo
-  python check_transaction.py --address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa --currency btc
+  python check_transaction.py --address xxxxxx --currency btc
 
 Per maggiori informazioni, visita: https://docs.caudena.com
         """
